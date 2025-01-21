@@ -91,17 +91,17 @@ git checkout -b feature/YourFeatureName
 
 #### 1. Authentication Module
 - **Features**:
-    - Email and password-based registration.
-    - Secure login and session management.
+    - Email and password-based registration.                X
+    - Secure login and session management.                X
     - Callable function to create user-specific profiles.
-- **Firebase Integration**: Use Firebase Authentication.
+- **Firebase Integration**: Use Firebase Authentication. X
 
 #### 2. Task Management Module
 - **Features**:
-    - Create, read, update, and delete tasks.
-    - Assign tasks dynamically to users based on predefined criteria.
-    - Real-time updates for task changes using Firestore triggers.
-- **Firebase Integration**: Use Firestore for data management.
+    - Create, read, update, and delete tasks.                X
+    - Assign tasks dynamically to users based on predefined criteria.                X
+    - Real-time updates for task changes using Firestore triggers.                X
+- **Firebase Integration**: Use Firestore for data management.    X
 
 #### 3. External API Integration
 - **Features**:
@@ -117,9 +117,9 @@ git checkout -b feature/YourFeatureName
 
 #### 5. Role-Based Access Control (RBAC)
 - **Features**:
-    - Implement role-based access for different user types (e.g., Admin, User).
+    - Implement role-based access for different user types (e.g., Admin, User).    X
     - Define Firestore rules for access control.
-    - Use Cloud Functions to enforce RBAC for sensitive operations.
+    - Use Cloud Functions to enforce RBAC for sensitive operations.    X
 
 #### 6. Advanced Reporting Module
 - **Features**:
@@ -146,8 +146,8 @@ git checkout -b feature/YourFeatureName
 
 ### Testing and Deployment
 
-- **Unit Testing**: Write tests for Cloud Functions using Jest.
-- **Firestore Testing**: Use Firebase Emulator for database rule validation.
+- **Unit Testing**: Write tests for Cloud Functions using Jest.    X
+- **Firestore Testing**: Use Firebase Emulator for database rule validation.   
 - **Deployment**: Deploy functions and database rules:
 ```bash
 firebase deploy
