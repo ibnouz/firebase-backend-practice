@@ -1,4 +1,10 @@
 
+# ** Important Info by IBNOUZ**
+- Each task has 1 role string, the "concernedrole" property
+- a user can have multiple roles in their custom claims data
+    - if a task has a role that a user has, they will see it
+    - the role "admin" sees all when using /foryou get route
+
 # Firebase Backend Intern Practice
 
 ## About The Project

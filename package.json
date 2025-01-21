@@ -1,0 +1,12 @@
+{
+  "name": "firebase-backend-practice",
+  "version": "1.0.0",
+  "description": "This practice program is designed to provide hands-on experience in building and managing backend systems using Firebase and Cloud Functions with TypeScript. By the end of the program, you will have developed a dynamic backend application and learned best practices for backend development.",
+  "main": "functions/src/index.ts",
+  "scripts": {
+    "demarrerCustom": "firebase emulators:start --import=./firebase/firebase-export --export-on-exit ./firebase/firebase-export",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
