@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
     "skipLibCheck": true,
+    "types": ["jest","node","supertest"],
+    "resolveJsonModule": true,
     "module": "NodeNext",
     "esModuleInterop": true,
     "moduleResolution": "nodenext",
@@ -9,10 +11,13 @@
     "outDir": "lib",
     "sourceMap": true,
     "strict": true,
-    "target": "es2017"
+    "target": "es6",//"es2017"
   },
   "compileOnSave": true,
   "include": [
-    "src"
+    "src",
+    "test",
+    "src/**/*",
+    "test/**/*.ts"
   ]
 }

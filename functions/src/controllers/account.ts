@@ -1,7 +1,8 @@
-import { Request } from "firebase-functions/v2/https";
+//import { Request } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import { Response } from "firebase-functions/v1";
 import express from 'express';
+import { UserRecord } from "firebase-admin/auth";
 /*
 admin.auth().listUsers().then((result) => {
     console.log(result)
@@ -27,6 +28,32 @@ async function canAuthFromReq(req:any){
         result = false;
     }
     return {"can": result, "userobj": foundUser, "roles":foundRoles ?? {}};
+}
+async function findUsersForRole(somerole:string){
+    let userlist  : UserRecord[]= [];
+    await admin.auth().listUsers().then((result) => {
+        if(result)
+            if (result.users != null && result.users.length > 0){
+                result.users.forEach((u)=>{
+                    if(u.customClaims?.roles != null){
+                        let userroles = u.customClaims?.roles as string[];
+                        if(userroles.includes(somerole) || userroles.includes("admin"))
+                            userlist.push(u);}
+                });
+            };
+    })
+    if (userlist.length == 0)
+        return {success: false,list: []};
+
+    let nonAdminUsers = userlist.filter((u) => {
+        let userroles = u.customClaims?.roles as string[];
+        return !userroles.includes("admin");
+    });
+    let leastPrivilegedUser : UserRecord | undefined = undefined;
+    if (nonAdminUsers.length > 0) 
+        leastPrivilegedUser = nonAdminUsers[Math.floor(Math.random() * nonAdminUsers.length)];
+    
+    return {success: userlist.length > 0, list: userlist, leastPrivilegedUser: leastPrivilegedUser};
 }
 
 async function getAccount(req:any, res: Response) {
@@ -76,10 +103,10 @@ router.get("", async(req,res,next)=>{
     res.status(success ? 200 : 400).send(msg);
 });
 router.delete("", async(req,res,next)=>{
-    return getAccount(req,res);
+    return await getAccount(req,res);
 });
 router.post("", async(req,res,next)=>{
     return await createAccount(req,res)
 });
 
-export { getAccount, createAccount, router , canAuthFromReq};
+export { getAccount, createAccount, router , canAuthFromReq, findUsersForRole};
