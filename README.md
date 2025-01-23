@@ -3,7 +3,10 @@
 - Each task has 1 role string, the "concernedrole" property
 - a user can have multiple roles in their custom claims data
     - if a task has a role that a user has, they will see it
-    - the role "admin" sees all when using /foryou get route
+    - the role "admin" sees all when using /foryou get route but made to not get assigned to the task when firestore trigger searches for someone with the concernedrole to assign to
+    
+    - UPD: use route /account/setrole with wantedrole in headers to give yourself a role
+    - will return your role in this format { rolesnow: ['allo', 'big'] }
 
 # Firebase Backend Intern Practice
 

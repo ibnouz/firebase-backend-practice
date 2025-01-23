@@ -1,5 +1,6 @@
 import { onRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
+import * as functions from 'firebase-functions/v1';
 admin.initializeApp();
 import * as accountsController from './controllers/account';
 import * as tasksController from './controllers/tasks';
@@ -20,6 +21,9 @@ export const somerequest = onRequest(async (request, response) => {
 app.use("/account",accountsController.router);
 app.use("/tasks",tasksController.router);
 
+functions.pubsub.schedule("every 1 hours").onRun((ctx)=>{
+  tasksController.checkdeadlines({},{});
+});
 /*
 module.exports = {
   app:onRequest(app),
@@ -36,3 +40,4 @@ exports.tasksOnDocumentEditTrigger = tasksController.tasksOnDocumentEditTrigger;
 //if (process.env.NODE_ENV !== 'production') {
  // module.exports.expressApp = app;  // Only for local testing or development
 //}
+

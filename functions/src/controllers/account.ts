@@ -3,6 +3,7 @@ import * as admin from "firebase-admin";
 import { Response } from "firebase-functions/v1";
 import express from 'express';
 import { UserRecord } from "firebase-admin/auth";
+import { setGlobalOptions } from "firebase-functions";
 /*
 admin.auth().listUsers().then((result) => {
     console.log(result)
@@ -12,7 +13,7 @@ async function fetchUserByUID(uid: any) {
     let user = admin.auth().getUser(uid)
     return user;
 }
-async function canAuthFromReq(req:any){
+async function canAuthFromReq(req: any) {
     let result = false;
     let foundUser;
     let foundRoles;
@@ -20,58 +21,104 @@ async function canAuthFromReq(req:any){
         const authToken = req.headers.authorization?.split(" ")[1];
         const uid = authToken || req.headers.uid;
         let user = await fetchUserByUID(uid);
-        if(user){
-            let roles = (await fetchUserByUID(uid)).customClaims?.roles ?? {};
-            result = true; foundUser=user; foundRoles=roles ?? {};
+        if (user) {
+            //let roles = (await fetchUserByUID(uid)).customClaims?.roles ?? {};
+            let roles = (await getUserExtraRecords(user)).roles;
+            result = true; foundUser = user; foundRoles = roles ?? {};
         };
     } catch (error) {
         result = false;
     }
-    return {"can": result, "userobj": foundUser, "roles":foundRoles ?? {}};
+    return { "can": result, "userobj": foundUser, "roles": foundRoles ?? [] };
 }
-async function findUsersForRole(somerole:string){
-    let userlist  : UserRecord[]= [];
-    await admin.auth().listUsers().then((result) => {
-        if(result)
-            if (result.users != null && result.users.length > 0){
-                result.users.forEach((u)=>{
-                    if(u.customClaims?.roles != null){
-                        let userroles = u.customClaims?.roles as string[];
-                        if(userroles.includes(somerole) || userroles.includes("admin"))
-                            userlist.push(u);}
-                });
+async function findUsersForRole(somerole: string) {
+    let userlist = [];
+    const result = await admin.auth().listUsers();
+    if (result)
+        if (result.users != null && result.users.length > 0) {
+            for (const u of result.users) {
+                let records = await getUserExtraRecords(u);
+                let roles = records.roles
+                if (roles != null) {  //u.customClaims?.roles != null){
+                    let userroles = roles; //u.customClaims?.roles as string[];
+                    if (userroles.includes(somerole) || userroles.includes("admin")){
+                        userlist.push(u);
+                        //console.log(u);
+                    }
+                        
+                }
             };
-    })
-    if (userlist.length == 0)
-        return {success: false,list: []};
+        };
 
-    let nonAdminUsers = userlist.filter((u) => {
-        let userroles = u.customClaims?.roles as string[];
+
+    /*let nonAdminUsers = userlist.filter(async (u) =>{
+        let userroles =  await getUserExtraRecords(u); // u.customClaims?.roles as string[];
         return !userroles.includes("admin");
-    });
+    });*/
+    let nonAdminUsers :UserRecord[] = [];
+    for(var user of userlist){
+        try {
+            let roles = (await getUserExtraRecords(user)).roles; // u.customClaims?.roles as string[];
+            if(!roles.includes("admin")){
+                nonAdminUsers.push(user)
+            }
+        } catch (error) {console.log(error)};
+    };
     let leastPrivilegedUser : UserRecord | undefined = undefined;
-    if (nonAdminUsers.length > 0) 
+    if (nonAdminUsers.length > 0)
         leastPrivilegedUser = nonAdminUsers[Math.floor(Math.random() * nonAdminUsers.length)];
-    
-    return {success: userlist.length > 0, list: userlist, leastPrivilegedUser: leastPrivilegedUser};
+
+    let returning = { success: userlist.length > 0,nonAdminUsers: nonAdminUsers, list: userlist, leastPrivilegedUser: leastPrivilegedUser };
+    console.log(returning);
+    return returning;
 }
 
-async function getAccount(req:any, res: Response) {
+async function getAccount(req: any, res: Response) {
     const authToken = req.headers.authorization?.split(" ")[1];
     const uid = authToken || req.headers.uid;
     if (!uid || uid.length == 0) {
         //res.status(401).json({ message: "Unauthorized, no token provided" });
-        return [false,"No uid in headers"];
+        return [false, {error:"No uid in headers"}];
     }
     try {
         let user = await fetchUserByUID(uid);
         //res.json(user);
-        return[true,user];
+        return [true, user];
     } catch (e) {
         //res.status(400).send("No account associated");
-        return [false,"No account found from uid"];
+        return [false, {error:"No account found from uid"}];
     }
-    return [false,false];
+    return [false, false];
+}
+async function setAccountRole(req: any, res: Response) {
+    let can = await canAuthFromReq(req);
+    if (!can.can)
+        return [false, { error: "no" }];
+
+    let wantedrole = req.headers.role;
+    if (wantedrole == undefined)
+        return [false, { error: "specify a 'role' header" }];
+
+    let user = can.userobj;
+    let currRoles = can.roles;
+    currRoles.push(wantedrole);
+    try {
+        await admin.firestore().collection("users").doc(user!.uid).set({ roles: currRoles }, { merge: true });
+        return [true,{rolesnow: currRoles}];
+    } catch (e) { return [false, { error: e }]; }
+
+    return [false, { error: "impossible" }];
+}
+async function getUserExtraRecords(user: UserRecord) {
+    let roles: String[] = [];
+    try {
+        let fields = (await admin.firestore().collection("users").doc(user.uid).get())?.data();
+        if (fields)
+            roles = fields.roles ?? [];
+    } catch (e) { }
+    return {
+        roles: roles,
+    };
 }
 async function createAccount(req: any, res: Response) {
     let d = {
@@ -82,31 +129,35 @@ async function createAccount(req: any, res: Response) {
     }
     for (const [propertyName, value] of Object.entries(d)) {
         let userInput = value;
-        if(userInput == null)
-            {res.status(400).send("missing info: "+propertyName);   return;}
+        if (userInput == null) { res.status(400).send("missing info: " + propertyName); return; }
     };
+
     admin.auth().createUser({
         "displayName": d.displayName as string,
         "email": d.email as string,
         "emailVerified": false,
         "password": d.pw as string,
     }).then(newUser => {
-        admin.auth().setCustomUserClaims(newUser.uid,{roles: d.roles});
+        admin.auth().setCustomUserClaims(newUser.uid, { roles: d.roles });
+        admin.firestore().collection("users").doc(newUser.uid).set({ roles: d.roles, uid: newUser.uid }, { merge: true });
         res.json(newUser);
-    }).catch(e=>{
+    }).catch(e => {
         res.json({ "error": e, })
     });
 }
 let router = express.Router();
-router.get("", async(req,res,next)=>{
-    const [success, msg] = await getAccount(req,res);
+router.get("", async (req, res, next) => {
+    const [success, msg] = await getAccount(req, res);
     res.status(success ? 200 : 400).send(msg);
 });
-router.delete("", async(req,res,next)=>{
-    return await getAccount(req,res);
+router.delete("", async (req, res, next) => {
+    return await getAccount(req, res);
 });
-router.post("", async(req,res,next)=>{
-    return await createAccount(req,res)
+router.post("", async (req, res, next) => {
+    return await createAccount(req, res)
 });
-
-export { getAccount, createAccount, router , canAuthFromReq, findUsersForRole};
+router.put("/setrole", async (req, res, next) => {
+    const [success, msg] = await setAccountRole(req, res);
+    res.status(success ? 200 : 400).send(msg);
+});
+export { getAccount, createAccount, router, getUserExtraRecords, canAuthFromReq, findUsersForRole };

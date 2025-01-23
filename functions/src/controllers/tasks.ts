@@ -1,10 +1,12 @@
 //import { Request } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 //import { Response } from "firebase-functions/v1";
-import { canAuthFromReq, findUsersForRole } from "./account";
+import { canAuthFromReq, findUsersForRole,getUserExtraRecords } from "./account";
 import express from 'express';
 import { UserRecord } from "firebase-admin/auth";
 import * as functions from "firebase-functions";
+//import * as moment from 'moment';
+const moment = require("moment");
 
 interface Task {
     concernedrole: string | null;
@@ -56,8 +58,10 @@ async function getTasks(req:any,res:any,removeQueriedTID:boolean = false){
     //console.log("euh:",queried_tid);
     return results ?? [false,{}];
 }
+
+
 async function filterTasksForUser(user:UserRecord,req: any,res: any){
-    let userroles : String[]= user.customClaims?.roles ?? [];
+    let userroles : String[]= (await getUserExtraRecords(user))?.roles ?? [];
     console.log(userroles);
     const  [success,consttasks] = await getTasks(req,res);
     if(!success)
@@ -87,7 +91,7 @@ async function filterTasksForUser(user:UserRecord,req: any,res: any){
 async function canEditTask(user:UserRecord, task:any){
     if(user.disabled)
         return false;
-    if(user.customClaims?.roles.includes("admin"))
+    if((await getUserExtraRecords(user)).roles.includes("admin"))
         return true;
     if(user.uid == task.userid)
         return true;
@@ -161,7 +165,7 @@ async function createTask(req:any,res:any) {
     let d = {
         "description": req.headers.description ?? null,
         "title": req.headers.title ?? null,
-        "category": req.headers.category ?? null,
+        "category": req.headers.category ?? "none",
         "deadline": new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), //30 jours
         "concernedrole" : req.headers.concernedrole ?? "public", }
     let results: string | any[] = [];
@@ -229,23 +233,92 @@ router.post("", async (req,res,next) => {
     const [status,result] = await createTask(req,res);
     res.status(status ? 200 : 404).send(result);
 })
-var tasksOnDocumentCreatedTrigger = functions.firestore.onDocumentCreated("tasks/{taskId}",async (snapshot)=>{
+
+
+var tasksOnDocumentCreatedTrigger = functions.firestore.onDocumentCreated("tasks/{taskId}", async (snapshot) => {
     let newDoc = snapshot.data;
     let taskid = newDoc?.id;
-    if(taskid == null) return;
-    
+    if (taskid == null) return;
+
     const usersForRoleSearch = await findUsersForRole(newDoc?.data().concernedrole)
-    if(usersForRoleSearch.success)
-        newDoc?.ref.update("assignedTo",usersForRoleSearch.leastPrivilegedUser?.uid)
+    if (usersForRoleSearch.success) {
+        newDoc?.ref.update("assignedTo", usersForRoleSearch.leastPrivilegedUser?.uid)
+        const newValue = snapshot.data?.data();
+        const token = newValue?.deviceTokenOfAssignedTouid; // Assuming you store the device token on the Firestore doc
+        if (token) {
+            const message = {
+                notification: {
+                    title: 'New task assigned to You!',
+                    body: `Task ${newValue.title} was assigned to you.`,
+                },
+                token: token,
+            };
+            try {
+                await admin.messaging().send(message);
+            } catch (error) {}
+        }
+    }
 });
-var tasksOnDocumentEditTrigger = functions.firestore.onDocumentUpdated("tasks/{taskId}",async (snapshot)=>{
+var tasksOnDocumentEditTrigger = functions.firestore.onDocumentUpdated("tasks/{taskId}", async (snapshot) => {
     let newDoc = snapshot.data?.after;
     let taskid = newDoc?.id;
-    if(taskid == null) return;
-    
+    if (taskid == null) return;
+
     const usersForRoleSearch = await findUsersForRole(newDoc?.data().concernedrole)
-    if(usersForRoleSearch.success && newDoc?.data().assignedTo != usersForRoleSearch.leastPrivilegedUser?.uid)
-        newDoc?.ref.update("assignedTo",usersForRoleSearch.leastPrivilegedUser?.uid)
+    if (usersForRoleSearch.success && newDoc?.data().assignedTo != usersForRoleSearch.leastPrivilegedUser?.uid){
+        newDoc?.ref.update("assignedTo", usersForRoleSearch.leastPrivilegedUser?.uid)
+        const newValue = snapshot.data?.after.data();
+        const token = newValue?.deviceTokenOfAssignedTouid; // Assuming you store the device token on the Firestore doc
+        if (token) {
+            const message = {
+                notification: {
+                    title: 'Task now assigned to You!',
+                    body: `Task ${newValue.title} was assigned to you.`,
+                },
+                token: token,
+            };
+            try {
+                await admin.messaging().send(message);
+            } catch (error) {}
+        }
+    }
+        
+});
+async function checkdeadlines(req:any,res:any){
+    const now = new Date();
+    const deadlineThreshold = moment(now).add(1, 'hours').toDate();
+    try {
+        const tasksSnapshot = await admin.firestore().collection('tasks')
+            .where('deadline', '>', now)
+            .where('deadline', '<=', deadlineThreshold)
+            .get();
+        if (tasksSnapshot.empty) {
+            return [true,{msg:"no notif to send for now"}];
+        }
+        tasksSnapshot.forEach(async (doc) => {
+            const task = doc.data();
+            const token = task.deviceTokenOfAssignedTouid;
+            if (token) {
+                const message = {
+                    notification: {
+                        title: 'Upcoming Task Deadline',
+                        body: `Task "${task.title}" is due soon.`,
+                    },
+                    token: token,
+                };
+                await admin.messaging().send(message);
+            }
+        });
+        return [true,{msg:"notifications sent"}];
+    } catch (error) { return [false,{"error": error}] }
+    //return [true,true];
+}
+
+router.post("/checkdeadlines",async function(req,res){
+    const [status,result] = await checkdeadlines(req,res);
+    res.status(status ? 200 : 404).send(result);
 });
 
-export {router,tasksOnDocumentCreatedTrigger,tasksOnDocumentEditTrigger,filterTasksForUser}
+
+
+export {router,tasksOnDocumentCreatedTrigger,tasksOnDocumentEditTrigger,filterTasksForUser, checkdeadlines};
