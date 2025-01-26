@@ -179,6 +179,7 @@ async function createTask(req:any,res:any) {
         const doc = await admin.firestore().collection("tasks").add({
             ...d,
             userid:user?.uid,
+            createdat: new Date(), //admin.firestore.FieldValue.serverTimestamp(),
             concernedrole: d.concernedrole ? d.concernedrole : "public",
         })
         if(doc != null && (await doc.get()).exists){

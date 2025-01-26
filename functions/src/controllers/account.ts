@@ -156,8 +156,8 @@ router.delete("", async (req, res, next) => {
 router.post("", async (req, res, next) => {
     return await createAccount(req, res)
 });
-router.put("/setrole", async (req, res, next) => {
+router.put("/addrole", async (req, res, next) => {
     const [success, msg] = await setAccountRole(req, res);
     res.status(success ? 200 : 400).send(msg);
 });
-export { getAccount, createAccount, router, getUserExtraRecords, canAuthFromReq, findUsersForRole };
+export { getAccount, createAccount, router,fetchUserByUID, getUserExtraRecords, canAuthFromReq, findUsersForRole };
