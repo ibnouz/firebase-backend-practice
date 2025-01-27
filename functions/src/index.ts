@@ -25,16 +25,17 @@ app.use("/account",accountsController.router);
 app.use("/tasks",tasksController.router);
 app.use("/reports",servicereportsController.router);
 
+
+//jai appris que les schedules ne fonctionentn pas dans emulateur, elle ne fonctione que deployed
 functions.pubsub.schedule("every 1 hours").onRun((ctx)=>{
   tasksController.checkdeadlines({},{});
+});
+functions.pubsub.schedule("every 24 hours").onRun((ctx)=>{
+  servicereportsController.newReport(undefined,undefined,true);
+  functions.logger.info("New report was made and saved to firestore");
 });
 
 exports.app = onRequest(app);
 exports.tasksOnDocumentCreatedTrigger = tasksController.tasksOnDocumentCreatedTrigger;
 exports.tasksOnDocumentEditTrigger = tasksController.tasksOnDocumentEditTrigger;
-
-//exports.expressApp = app;
-//if (process.env.NODE_ENV !== 'production') {
- // module.exports.expressApp = app;  // Only for local testing or development
-//}
 

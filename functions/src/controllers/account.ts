@@ -3,7 +3,10 @@ import * as admin from "firebase-admin";
 import { Response } from "firebase-functions/v1";
 import express from 'express';
 import { UserRecord } from "firebase-admin/auth";
-import { setGlobalOptions } from "firebase-functions";
+//import { setGlobalOptions } from "firebase-functions";
+import { ParsedQs } from "qs";
+import { Request } from "express-serve-static-core";
+//import { Request } from "firebase-functions/https";
 /*
 admin.auth().listUsers().then((result) => {
     console.log(result)
@@ -13,7 +16,7 @@ async function fetchUserByUID(uid: any) {
     let user = admin.auth().getUser(uid)
     return user;
 }
-async function canAuthFromReq(req: any) {
+async function canAuthFromReq(req: Request<{}, any, any, ParsedQs, Record<string, any>>) {
     let result = false;
     let foundUser;
     let foundRoles;
@@ -73,7 +76,7 @@ async function findUsersForRole(somerole: string) {
     return returning;
 }
 
-async function getAccount(req: any, res: Response) {
+async function getAccount(req: Request<{}, any, any, ParsedQs, Record<string, any>>, res: Response) {
     const authToken = req.headers.authorization?.split(" ")[1];
     const uid = authToken || req.headers.uid;
     if (!uid || uid.length == 0) {
@@ -90,18 +93,16 @@ async function getAccount(req: any, res: Response) {
     }
     return [false, false];
 }
-async function setAccountRole(req: any, res: Response) {
+async function setAccountRole(req: Request<{}, any, any, ParsedQs, Record<string, any>>, res: Response) {
     let can = await canAuthFromReq(req);
     if (!can.can)
         return [false, { error: "no" }];
-
-    let wantedrole = req.headers.role;
+    let wantedrole = req.headers.role ?? undefined;
     if (wantedrole == undefined)
         return [false, { error: "specify a 'role' header" }];
-
     let user = can.userobj;
     let currRoles = can.roles;
-    currRoles.push(wantedrole);
+    currRoles.push(wantedrole as string);
     try {
         await admin.firestore().collection("users").doc(user!.uid).set({ roles: currRoles }, { merge: true });
         return [true,{rolesnow: currRoles}];
@@ -120,7 +121,7 @@ async function getUserExtraRecords(user: UserRecord) {
         roles: roles,
     };
 }
-async function createAccount(req: any, res: Response) {
+async function createAccount(req:Request<{}, any, any, ParsedQs, Record<string, any>>, res: any) {
     let d = {
         "displayName": req.headers.displayname ?? null,
         "email": req.headers.email ?? null,

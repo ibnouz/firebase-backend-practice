@@ -7,8 +7,8 @@
     
     - UPD: use route /account/addrole with wantedrole in headers to give yourself a role
         - will return your role in this format { rolesnow: ['allo', 'big'] }
-- You can generate reports using /reports/new (with uid headers. User must have at least "admin" role)
-    - Use "shouldsave" to a string of true in headers for saving to firestore the usage report.
+- You can generate reports using /reports/new
+    - Use "shouldsave" to a string of true in headers if u want to save the report
 
 # Firebase Backend Intern Practice
 
@@ -117,7 +117,7 @@ git checkout -b feature/YourFeatureName
 #### 4. Scheduled Notifications
 - **Features**:
     - Send notifications for upcoming deadlines. X
-    - Use Firebase Cloud Functions to schedule reminders.
+    - Use Firebase Cloud Functions to schedule reminders.   X
 - **Firebase Integration**: Use scheduled functions and push notifications. X
 
 #### 5. Role-Based Access Control (RBAC)
@@ -128,8 +128,8 @@ git checkout -b feature/YourFeatureName
 
 #### 6. Advanced Reporting Module
 - **Features**:
-    - Generate periodic reports for task completion statistics. 
-    - Implement a Cloud Function to summarize user activity. X (needs days header param)
+    - Generate periodic reports for task completion statistics.  X
+    - Implement a Cloud Function to summarize user activity. X
     - Store reports in Firestore for admin access. X
 
 #### 7. Webhook Integration
