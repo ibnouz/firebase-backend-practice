@@ -46,7 +46,6 @@ async function findUsersForRole(somerole: string) {
                     let userroles = roles; //u.customClaims?.roles as string[];
                     if (userroles.includes(somerole) || userroles.includes("admin")){
                         userlist.push(u);
-                        //console.log(u);
                     }
                         
                 }

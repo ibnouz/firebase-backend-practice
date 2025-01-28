@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{userId} {
+      allow read, write: if request.headers["uid"] != null && request.headers["uid"] == userId;
+    }
+
+    match /tasks/{documentId} {
+      allow read: if true;
+      allow write: if true;
+      allow delete: if request.headers["uid"] != null && request.headers["uid"] == resource.data.userid;
+    }
+  }
+}

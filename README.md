@@ -123,7 +123,7 @@ git checkout -b feature/YourFeatureName
 #### 5. Role-Based Access Control (RBAC)
 - **Features**:
     - Implement role-based access for different user types (e.g., Admin, User).    X
-    - Define Firestore rules for access control.
+    - Define Firestore rules for access control. X
     - Use Cloud Functions to enforce RBAC for sensitive operations.    X
 
 #### 6. Advanced Reporting Module
